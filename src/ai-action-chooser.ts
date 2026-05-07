@@ -1,58 +1,22 @@
-import { generateText, gateway, Output } from "ai";
-import { z } from "zod";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { generateText, stepCountIs } from "ai";
 
 import type { BrowserAction } from "./browser-action.js";
 import type { BrowserObservation } from "./browser-observation.js";
+import { browserTools } from "./browser-tools.js";
 import { agentConfig } from "./config.js";
 import { aiActionChooserSystemPrompt } from "./prompts.js";
-
-const mouseButtonSchema = z.enum(["left", "right", "middle"]);
-
-const browserActionSchema = z.discriminatedUnion("type", [
-  z.object({
-    type: z.literal("click"),
-    x: z.number().int(),
-    y: z.number().int(),
-    button: mouseButtonSchema,
-  }),
-  z.object({
-    type: z.literal("typeText"),
-    text: z.string(),
-  }),
-  z.object({
-    type: z.literal("pressKey"),
-    key: z.string(),
-  }),
-  z.object({
-    type: z.literal("scroll"),
-    x: z.number().int(),
-    y: z.number().int(),
-    deltaX: z.number().int(),
-    deltaY: z.number().int(),
-  }),
-  z.object({
-    type: z.literal("wait"),
-    ms: z.number().int().nonnegative(),
-  }),
-]);
-
-const actionDecisionSchema = z.object({
-  action: browserActionSchema.nullable(),
-  summary: z.string().optional(),
-});
-
-type AiBrowserAction = z.infer<typeof browserActionSchema>;
 
 export async function chooseNextAction(
   observation: BrowserObservation,
 ): Promise<BrowserAction | null> {
-  assertAiGatewayConfigured();
+  const nvidia = createNvidiaProvider();
 
-  const { output } = await generateText({
-    model: gateway(agentConfig.aiGatewayModel),
-    output: Output.object({
-      schema: actionDecisionSchema,
-    }),
+  const result = await generateText({
+    model: nvidia(agentConfig.model),
+    tools: browserTools,
+    toolChoice: "auto",
+    stopWhen: stepCountIs(1),
     system: aiActionChooserSystemPrompt,
     messages: [
       {
@@ -74,15 +38,49 @@ export async function chooseNextAction(
     maxOutputTokens: agentConfig.maxOutputTokens,
   });
 
-  return output.action === null ? null : normalizeBrowserAction(output.action);
-}
+  if (result.toolCalls.length === 0) {
+    return null;
+  }
 
-function assertAiGatewayConfigured(): void {
-  if (process.env.AI_GATEWAY_API_KEY === undefined) {
+  if (result.toolCalls.length !== 1) {
     throw new Error(
-      "AI mode requires AI_GATEWAY_API_KEY to be set in the environment.",
+      `Expected exactly one browser tool call, received ${result.toolCalls.length}.`,
     );
   }
+
+  const [toolResult] = result.toolResults;
+
+  if (toolResult === undefined || result.toolResults.length !== 1) {
+    throw new Error(
+      `Expected exactly one browser tool result, received ${result.toolResults.length}.`,
+    );
+  }
+
+  if (toolResult.dynamic === true) {
+    throw new Error(`Unexpected dynamic browser tool result: ${toolResult.toolName}`);
+  }
+
+  return toolResult.output;
+}
+
+function createNvidiaProvider() {
+  return createOpenAICompatible({
+    name: "nvidia",
+    baseURL: agentConfig.nvidiaBaseUrl,
+    apiKey: getNvidiaApiKey(),
+  });
+}
+
+function getNvidiaApiKey(): string {
+  const apiKey = process.env.NVIDIA_API_KEY;
+
+  if (apiKey === undefined || apiKey.trim() === "") {
+    throw new Error(
+      "AI mode requires NVIDIA_API_KEY to be set in the environment.",
+    );
+  }
+
+  return apiKey;
 }
 
 function formatObservationForModel(observation: BrowserObservation): string {
@@ -99,25 +97,4 @@ function formatObservationForModel(observation: BrowserObservation): string {
 
 function formatJson(value: unknown): string {
   return JSON.stringify(value);
-}
-
-function normalizeBrowserAction(action: AiBrowserAction): BrowserAction {
-  switch (action.type) {
-    case "click":
-      return { type: "click", x: action.x, y: action.y, button: action.button };
-    case "typeText":
-      return { type: "typeText", text: action.text };
-    case "pressKey":
-      return { type: "pressKey", key: action.key };
-    case "scroll":
-      return {
-        type: "scroll",
-        x: action.x,
-        y: action.y,
-        deltaX: action.deltaX,
-        deltaY: action.deltaY,
-      };
-    case "wait":
-      return { type: "wait", ms: action.ms };
-  }
 }
