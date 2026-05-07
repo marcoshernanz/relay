@@ -8,12 +8,12 @@ import {
   type Page,
 } from "playwright";
 
+import type { ClickOptions, ScrollOptions } from "./browser-action.js";
+
 export type ViewportSize = {
   width: number;
   height: number;
 };
-
-export type MouseButton = "left" | "right" | "middle";
 
 export type ScreenshotResult = {
   data: Buffer;
@@ -24,19 +24,6 @@ export type ScreenshotResult = {
   title: string;
 };
 
-export type ClickOptions = {
-  x: number;
-  y: number;
-  button: MouseButton;
-};
-
-export type ScrollOptions = {
-  x: number;
-  y: number;
-  deltaX: number;
-  deltaY: number;
-};
-
 const DEFAULT_VIEWPORT: ViewportSize = {
   width: 1280,
   height: 800,
@@ -44,7 +31,9 @@ const DEFAULT_VIEWPORT: ViewportSize = {
 
 const DEFAULT_HEADLESS = false;
 const DEFAULT_DEVICE_SCALE_FACTOR = 1;
-const DEFAULT_START_URL = pathToFileURL(resolve("test-pages", "basic.html")).href;
+const DEFAULT_START_URL = pathToFileURL(
+  resolve("test-pages", "basic.html"),
+).href;
 const DEFAULT_ACTION_DELAY_MS = 500;
 
 export class BrowserSession {
