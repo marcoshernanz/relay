@@ -8,10 +8,10 @@ export type AgentConfig = {
   temperature: number;
 };
 
-export const agentConfig = {
+export const agentConfig: AgentConfig = {
   task: "Fill the test page form and finish the test.",
   maxSteps: 20,
-  aiGatewayModel: "google/gemini-2.5-flash",
+  aiGatewayModel: "deepseek/deepseek-v4-flash",
   maxOutputTokens: 512,
   temperature: 0,
 };
