@@ -200,7 +200,7 @@ The milestone is:
 - Runtime: Node.js script
 - Model layer: AI SDK Core
 - Model provider: OpenRouter through `@openrouter/ai-sdk-provider`
-- Default model: `xiaomi/mimo-v2.5-pro`
+- Default model: `x-ai/grok-4.3`
 - Browser automation: Playwright Chromium
 - Viewport: `1280x800`
 - Device scale factor: `1`
