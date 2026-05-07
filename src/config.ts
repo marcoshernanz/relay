@@ -1,6 +1,6 @@
 import "./env.js"; // Load .env without requiring provider secrets during config import.
 
-export const openRouterModelId = "xiaomi/mimo-v2.5-pro";
+export const openRouterModelId = "x-ai/grok-4.3";
 export type OpenRouterModelId = typeof openRouterModelId;
 
 export type AgentConfig = {
@@ -12,7 +12,7 @@ export type AgentConfig = {
 };
 
 export const agentConfig: AgentConfig = {
-  task: "Fill the test page form and finish the test.",
+  task: "Fill the form, submit it, scroll to the bottom target, and click Finish Test.",
   maxSteps: 20,
   model: openRouterModelId,
   maxOutputTokens: 512,
