@@ -2,6 +2,8 @@ import {
   executeBrowserAction,
   type BrowserAction,
 } from "./browser-action.js";
+import { chooseNextAction } from "./ai-action-chooser.js";
+import { agentConfig } from "./config.js";
 import {
   captureBrowserObservation,
   type BrowserActionResult,
@@ -15,31 +17,11 @@ type AgentLoopOptions = {
   maxSteps: number;
 };
 
-type ActionChooser = (
-  observation: BrowserObservation,
-) => BrowserAction | null | Promise<BrowserAction | null>;
-
-const hardcodedActions: BrowserAction[] = [
-  { type: "wait", ms: 1000 },
-  { type: "click", x: 199, y: 227 },
-  { type: "click", x: 893, y: 223 },
-  { type: "typeText", text: "Ada Lovelace" },
-  { type: "click", x: 893, y: 322 },
-  { type: "typeText", text: "Testing the agent loop skeleton." },
-  { type: "click", x: 730, y: 482 },
-  { type: "click", x: 232, y: 685 },
-  { type: "scroll", x: 640, y: 410, deltaX: 0, deltaY: 420 },
-  { type: "click", x: 394, y: 239 },
-  { type: "click", x: 217, y: 713 },
-  { type: "pressKey", key: "Home" },
-];
-
 export async function runAgentLoop({
   task,
   maxSteps,
 }: AgentLoopOptions): Promise<void> {
   const session = new BrowserSession();
-  const chooseNextAction = createHardcodedActionChooser(hardcodedActions);
   let lastAction: BrowserAction | undefined;
   let lastActionResult: BrowserActionResult | undefined;
 
@@ -85,10 +67,6 @@ export async function runAgentLoop({
   }
 }
 
-function createHardcodedActionChooser(actions: BrowserAction[]): ActionChooser {
-  return (observation) => actions[observation.step] ?? null;
-}
-
 function createObservationInput({
   task,
   step,
@@ -122,9 +100,4 @@ function logObservation(observation: BrowserObservation): void {
   );
 }
 
-const task = process.argv.slice(2).join(" ") || "Run hardcoded browser actions.";
-
-await runAgentLoop({
-  task,
-  maxSteps: 20,
-});
+await runAgentLoop(agentConfig);
