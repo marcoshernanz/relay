@@ -27,7 +27,7 @@ export type ScreenshotResult = {
 export type ClickOptions = {
   x: number;
   y: number;
-  button?: MouseButton;
+  button: MouseButton;
 };
 
 export type ScrollOptions = {
@@ -88,7 +88,7 @@ export class BrowserSession {
     };
   }
 
-  async click({ x, y, button = "left" }: ClickOptions): Promise<void> {
+  async click({ x, y, button }: ClickOptions): Promise<void> {
     this.assertPointInViewport(x, y);
     await this.getPage().mouse.click(x, y, { button });
     await this.wait();
