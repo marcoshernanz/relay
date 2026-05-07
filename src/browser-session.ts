@@ -1,3 +1,6 @@
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
 import {
   chromium,
   type Browser,
@@ -41,7 +44,7 @@ const DEFAULT_VIEWPORT: ViewportSize = {
 
 const DEFAULT_HEADLESS = false;
 const DEFAULT_DEVICE_SCALE_FACTOR = 1;
-const DEFAULT_START_URL = "about:blank";
+const DEFAULT_START_URL = pathToFileURL(resolve("test-pages", "basic.html")).href;
 const DEFAULT_ACTION_DELAY_MS = 500;
 
 export class BrowserSession {
