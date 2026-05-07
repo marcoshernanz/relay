@@ -1,20 +1,20 @@
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText, stepCountIs } from "ai";
 
 import type { BrowserAction } from "./browser-action.js";
 import type { BrowserObservation } from "./browser-observation.js";
 import { browserTools } from "./browser-tools.js";
-import { agentConfig, nvidiaProviderConfig } from "./config.js";
+import { agentConfig } from "./config.js";
 import { env } from "./env.js";
 import { aiActionChooserSystemPrompt } from "./prompts.js";
 
 export async function chooseNextAction(
   observation: BrowserObservation,
 ): Promise<BrowserAction | null> {
-  const nvidia = createNvidiaProvider();
+  const openrouter = createOpenRouterProvider();
 
   const result = await generateText({
-    model: nvidia(agentConfig.model),
+    model: openrouter(agentConfig.model),
     tools: browserTools,
     toolChoice: "auto",
     stopWhen: stepCountIs(1),
@@ -58,16 +58,18 @@ export async function chooseNextAction(
   }
 
   if (toolResult.dynamic === true) {
-    throw new Error(`Unexpected dynamic browser tool result: ${toolResult.toolName}`);
+    throw new Error(
+      `Unexpected dynamic browser tool result: ${toolResult.toolName}`,
+    );
   }
 
   return toolResult.output;
 }
 
-function createNvidiaProvider() {
-  return createOpenAICompatible({
-    ...nvidiaProviderConfig,
-    apiKey: env.NVIDIA_API_KEY,
+function createOpenRouterProvider() {
+  return createOpenRouter({
+    apiKey: env.OPENROUTER_API_KEY,
+    appName: "relay",
   });
 }
 
