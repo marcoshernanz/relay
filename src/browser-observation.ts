@@ -1,5 +1,6 @@
 import type { BrowserAction } from "./browser-action.js";
 import type { BrowserSession } from "./browser-session.js";
+import type { BrowserPageObservation } from "./page-observation.js";
 
 export type BrowserActionResult =
   | { ok: true }
@@ -28,13 +29,17 @@ export type BrowserObservationPage = {
 export type BrowserObservation = BrowserObservationContext & {
   screenshot: BrowserObservationScreenshot;
   page: BrowserObservationPage;
+  pageObservation: BrowserPageObservation;
 };
 
 export async function captureBrowserObservation(
   session: BrowserSession,
   context: BrowserObservationContext,
 ): Promise<BrowserObservation> {
-  const pageSnapshot = await session.screenshot();
+  const [pageSnapshot, pageObservation] = await Promise.all([
+    session.screenshot(),
+    session.pageObservation(),
+  ]);
 
   return {
     ...context,
@@ -48,5 +53,6 @@ export async function captureBrowserObservation(
       url: pageSnapshot.url,
       title: pageSnapshot.title,
     },
+    pageObservation,
   };
 }
