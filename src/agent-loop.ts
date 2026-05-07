@@ -128,6 +128,8 @@ function logObservation(observation: BrowserObservation): void {
       `title=${JSON.stringify(observation.page.title)}`,
       `url=${observation.page.url}`,
       `screenshot=${observation.screenshot.width}x${observation.screenshot.height}`,
+      `elements=${observation.pageObservation.interactiveElements.length}`,
+      `textChars=${observation.pageObservation.visibleText.length}`,
     ].join(" | "),
   );
 }
