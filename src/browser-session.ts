@@ -1,4 +1,9 @@
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import {
+  chromium,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from "playwright";
 
 export type ViewportSize = {
   width: number;
@@ -123,14 +128,21 @@ export class BrowserSession {
 
   private getPage(): Page {
     if (this.page === undefined) {
-      throw new Error("BrowserSession has not been started. Call start() first.");
+      throw new Error(
+        "BrowserSession has not been started. Call start() first.",
+      );
     }
 
     return this.page;
   }
 
   private assertPointInViewport(x: number, y: number): void {
-    if (x < 0 || x >= DEFAULT_VIEWPORT.width || y < 0 || y >= DEFAULT_VIEWPORT.height) {
+    if (
+      x < 0 ||
+      x >= DEFAULT_VIEWPORT.width ||
+      y < 0 ||
+      y >= DEFAULT_VIEWPORT.height
+    ) {
       throw new Error(
         `Point (${x}, ${y}) is outside the viewport ${DEFAULT_VIEWPORT.width}x${DEFAULT_VIEWPORT.height}.`,
       );
