@@ -6,10 +6,9 @@ import type {
 import "./env.js"; // Load .env without requiring provider secrets during config import.
 
 export const nvidiaNimBaseUrl = "https://integrate.api.nvidia.com/v1" as const;
-export const kimiModelId =
-  "moonshotai/kimi-k2.6" satisfies OpenAICompatibleChatModelId;
-export type KimiModelId = typeof kimiModelId;
-export type NvidiaModelId = KimiModelId;
+export const nvidiaModelId =
+  "minimaxai/minimax-m2.7" satisfies OpenAICompatibleChatModelId;
+export type NvidiaModelId = typeof nvidiaModelId;
 
 export type NvidiaProviderConfig = Omit<
   OpenAICompatibleProviderSettings,
@@ -36,7 +35,7 @@ export const nvidiaProviderConfig: NvidiaProviderConfig = {
 export const agentConfig: AgentConfig = {
   task: "Fill the test page form and finish the test.",
   maxSteps: 20,
-  model: kimiModelId,
+  model: nvidiaModelId,
   maxOutputTokens: 512,
   temperature: 0,
 };

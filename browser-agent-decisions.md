@@ -200,7 +200,7 @@ The milestone is:
 - Runtime: Node.js script
 - Model layer: AI SDK Core
 - Model provider: NVIDIA NIM through `@ai-sdk/openai-compatible`
-- Default model: `moonshotai/kimi-k2.6`
+- Default model: `minimaxai/minimax-m2.7`
 - Browser automation: Playwright Chromium
 - Viewport: `1280x800`
 - Device scale factor: `1`
