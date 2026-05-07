@@ -9,6 +9,10 @@ import {
 } from "playwright";
 
 import type { ClickOptions, ScrollOptions } from "./browser-action.js";
+import {
+  capturePageObservation,
+  type BrowserPageObservation,
+} from "./page-observation.js";
 
 export type ViewportSize = {
   width: number;
@@ -75,6 +79,10 @@ export class BrowserSession {
       url: page.url(),
       title: await page.title(),
     };
+  }
+
+  async pageObservation(): Promise<BrowserPageObservation> {
+    return capturePageObservation(this.getPage());
   }
 
   async click({ x, y, button }: ClickOptions): Promise<void> {
