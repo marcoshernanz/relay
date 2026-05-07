@@ -1,7 +1,7 @@
 import type { BrowserSession, MouseButton } from "./browser-session.js";
 
 export type BrowserAction =
-  | { type: "click"; x: number; y: number; button?: MouseButton }
+  | { type: "click"; x: number; y: number; button: MouseButton }
   | { type: "typeText"; text: string }
   | { type: "pressKey"; key: string }
   | { type: "scroll"; x: number; y: number; deltaX: number; deltaY: number }
