@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 export type AppEnv = {
   NVIDIA_API_KEY: string;
 };
+export type AppEnvName = keyof AppEnv;
 
 const envFilePath = resolve(
   dirname(dirname(fileURLToPath(import.meta.url))),
@@ -15,7 +16,9 @@ const envFilePath = resolve(
 loadLocalEnvFile();
 
 export const env: AppEnv = {
-  NVIDIA_API_KEY: requiredEnvValue("NVIDIA_API_KEY"),
+  get NVIDIA_API_KEY() {
+    return requiredEnvValue("NVIDIA_API_KEY");
+  },
 };
 
 function loadLocalEnvFile(): void {
@@ -24,7 +27,7 @@ function loadLocalEnvFile(): void {
   }
 }
 
-function requiredEnvValue(name: keyof AppEnv): string {
+export function requiredEnvValue(name: AppEnvName): string {
   const value = process.env[name]?.trim();
 
   if (value === undefined || value === "") {
