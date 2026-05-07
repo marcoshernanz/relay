@@ -82,9 +82,55 @@ function formatObservationForModel(observation: BrowserObservation): string {
     `Screenshot size: ${observation.screenshot.width}x${observation.screenshot.height}`,
     `Last action: ${formatJson(observation.lastAction ?? null)}`,
     `Last action result: ${formatJson(observation.lastActionResult ?? null)}`,
+    "",
+    "Page observation:",
+    formatPageObservation(observation),
   ].join("\n");
 }
 
 function formatJson(value: unknown): string {
   return JSON.stringify(value);
+}
+
+function formatPageObservation(observation: BrowserObservation): string {
+  const pageObservation = observation.pageObservation;
+
+  return [
+    `Focused element: ${pageObservation.focusedElement ?? "none"}`,
+    "",
+    "Visible text:",
+    pageObservation.visibleText,
+    "",
+    "Interactive elements visible in the viewport:",
+    ...pageObservation.interactiveElements.map(formatInteractiveElement),
+    "",
+    "ARIA snapshot:",
+    pageObservation.ariaSnapshot,
+  ].join("\n");
+}
+
+function formatInteractiveElement(
+  element: BrowserObservation["pageObservation"]["interactiveElements"][number],
+): string {
+  const value =
+    element.value === null || element.value === ""
+      ? ""
+      : ` value=${JSON.stringify(element.value)}`;
+  const checked =
+    element.checked === null ? "" : ` checked=${String(element.checked)}`;
+  const disabled = element.disabled ? " disabled=true" : "";
+  const text =
+    element.text === "" ? "" : ` text=${JSON.stringify(element.text)}`;
+
+  return [
+    `[${element.index}]`,
+    `${element.role}`,
+    JSON.stringify(element.label || "(unlabeled)"),
+    `tag=${element.tagName}`,
+    `center=(${element.center.x},${element.center.y})`,
+    `bounds=${element.bounds.x},${element.bounds.y},${element.bounds.width}x${element.bounds.height}`,
+    `${value}${checked}${disabled}${text}`,
+  ]
+    .join(" ")
+    .trim();
 }
