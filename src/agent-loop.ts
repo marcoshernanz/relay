@@ -8,7 +8,7 @@ import {
   captureBrowserObservation,
   type BrowserActionResult,
   type BrowserObservation,
-  type BrowserObservationInput,
+  type BrowserObservationContext,
 } from "./browser-observation.js";
 import { BrowserSession } from "./browser-session.js";
 
@@ -17,29 +17,31 @@ type AgentLoopOptions = {
   maxSteps: number;
 };
 
+type CompletedBrowserAction = {
+  action: BrowserAction;
+  result: BrowserActionResult;
+};
+
 export async function runAgentLoop({
   task,
   maxSteps,
 }: AgentLoopOptions): Promise<void> {
   const session = new BrowserSession();
-
-  let lastAction: BrowserAction | undefined;
-  let lastActionResult: BrowserActionResult | undefined;
+  let previousAction: CompletedBrowserAction | undefined;
 
   try {
     await session.start();
 
     for (let step = 0; step < maxSteps; step += 1) {
-      const observationInput = createObservationInput({
+      const observationContext = createObservationContext({
         task,
         step,
         maxSteps,
-        lastAction,
-        lastActionResult,
+        previousAction,
       });
       const observation = await captureBrowserObservation(
         session,
-        observationInput,
+        observationContext,
       );
 
       logObservation(observation);
@@ -51,8 +53,7 @@ export async function runAgentLoop({
         return;
       }
 
-      lastActionResult = await executeAction(session, action);
-      lastAction = action;
+      previousAction = await executeChosenAction(session, action);
     }
 
     console.log(`Agent loop stopped: reached maxSteps (${maxSteps}).`);
@@ -61,49 +62,63 @@ export async function runAgentLoop({
   }
 }
 
-function createObservationInput({
+function createObservationContext({
   task,
   step,
   maxSteps,
-  lastAction,
-  lastActionResult,
+  previousAction,
 }: {
   task: string;
   step: number;
   maxSteps: number;
-  lastAction: BrowserAction | undefined;
-  lastActionResult: BrowserActionResult | undefined;
-}): BrowserObservationInput {
-  return {
+  previousAction: CompletedBrowserAction | undefined;
+}): BrowserObservationContext {
+  const context: BrowserObservationContext = {
     task,
     step,
     maxSteps,
-    ...(lastAction === undefined ? {} : { lastAction }),
-    ...(lastActionResult === undefined ? {} : { lastActionResult }),
   };
+
+  if (previousAction === undefined) {
+    return context;
+  }
+
+  return {
+    ...context,
+    lastAction: previousAction.action,
+    lastActionResult: previousAction.result,
+  };
+}
+
+async function executeChosenAction(
+  session: BrowserSession,
+  action: BrowserAction,
+): Promise<CompletedBrowserAction> {
+  logAction(action);
+
+  const result = await executeAction(session, action);
+  logActionResult(result);
+
+  return { action, result };
 }
 
 async function executeAction(
   session: BrowserSession,
   action: BrowserAction,
 ): Promise<BrowserActionResult> {
-  logAction(action);
-
   try {
     await executeBrowserAction(session, action);
-
-    const result: BrowserActionResult = { ok: true };
-    logActionResult(result);
-    return result;
+    return { ok: true };
   } catch (error) {
-    const result: BrowserActionResult = {
+    return {
       ok: false,
-      message: error instanceof Error ? error.message : String(error),
+      message: getErrorMessage(error),
     };
-
-    logActionResult(result);
-    return result;
   }
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function logObservation(observation: BrowserObservation): void {
@@ -127,7 +142,7 @@ function logActionResult(result: BrowserActionResult): void {
     return;
   }
 
-  console.log(`Action result: error | ${result.message ?? "unknown error"}`);
+  console.log(`Action result: error | ${result.message}`);
 }
 
 function formatAction(action: BrowserAction): string {
