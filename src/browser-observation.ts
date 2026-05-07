@@ -1,12 +1,11 @@
 import type { BrowserAction } from "./browser-action.js";
 import type { BrowserSession } from "./browser-session.js";
 
-export type BrowserActionResult = {
-  ok: boolean;
-  message?: string;
-};
+export type BrowserActionResult =
+  | { ok: true }
+  | { ok: false; message: string };
 
-export type BrowserObservationInput = {
+export type BrowserObservationContext = {
   task: string;
   step: number;
   maxSteps: number;
@@ -14,36 +13,40 @@ export type BrowserObservationInput = {
   lastActionResult?: BrowserActionResult;
 };
 
-export type BrowserObservation = BrowserObservationInput & {
-  screenshot: {
-    data: Buffer;
-    mediaType: "image/jpeg";
-    width: number;
-    height: number;
-  };
-  page: {
-    url: string;
-    title: string;
-  };
+export type BrowserObservationScreenshot = {
+  data: Buffer;
+  mediaType: "image/jpeg";
+  width: number;
+  height: number;
+};
+
+export type BrowserObservationPage = {
+  url: string;
+  title: string;
+};
+
+export type BrowserObservation = BrowserObservationContext & {
+  screenshot: BrowserObservationScreenshot;
+  page: BrowserObservationPage;
 };
 
 export async function captureBrowserObservation(
   session: BrowserSession,
-  input: BrowserObservationInput,
+  context: BrowserObservationContext,
 ): Promise<BrowserObservation> {
-  const screenshot = await session.screenshot();
+  const pageSnapshot = await session.screenshot();
 
   return {
-    ...input,
+    ...context,
     screenshot: {
-      data: screenshot.data,
-      mediaType: screenshot.mediaType,
-      width: screenshot.width,
-      height: screenshot.height,
+      data: pageSnapshot.data,
+      mediaType: pageSnapshot.mediaType,
+      width: pageSnapshot.width,
+      height: pageSnapshot.height,
     },
     page: {
-      url: screenshot.url,
-      title: screenshot.title,
+      url: pageSnapshot.url,
+      title: pageSnapshot.title,
     },
   };
 }
