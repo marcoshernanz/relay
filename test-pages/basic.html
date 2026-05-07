@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Browser Agent Test Page</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: #f5f7fb;
+        color: #172033;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      main {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        line-height: 1.15;
+      }
+
+      h1 {
+        font-size: 32px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+
+      p {
+        margin: 8px 0 0;
+        color: #526070;
+      }
+
+      a {
+        color: #0b61c9;
+      }
+
+      .header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+
+      .status {
+        min-width: 260px;
+        border: 1px solid #c9d3e1;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 12px 14px;
+      }
+
+      .status strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #667085;
+      }
+
+      .status span {
+        display: block;
+        min-height: 24px;
+        font-weight: 650;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 18px;
+      }
+
+      section {
+        border: 1px solid #d9e1ec;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 18px;
+      }
+
+      .full {
+        grid-column: 1 / -1;
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 16px;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      button {
+        min-height: 40px;
+        border: 1px solid #9fb2c8;
+        border-radius: 6px;
+        background: #eef4ff;
+        color: #172033;
+        padding: 0 14px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #dfeaff;
+      }
+
+      button.primary {
+        border-color: #0b61c9;
+        background: #0b61c9;
+        color: #ffffff;
+      }
+
+      label {
+        display: block;
+        margin-top: 14px;
+        font-weight: 650;
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        margin-top: 6px;
+        border: 1px solid #aebccd;
+        border-radius: 6px;
+        padding: 10px 12px;
+        color: #172033;
+        background: #ffffff;
+      }
+
+      textarea {
+        min-height: 82px;
+        resize: vertical;
+      }
+
+      .output {
+        min-height: 44px;
+        margin-top: 14px;
+        border: 1px solid #d9e1ec;
+        border-radius: 6px;
+        background: #f8fafc;
+        padding: 10px 12px;
+      }
+
+      .link-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .scroll-box {
+        height: 280px;
+        margin-top: 14px;
+        overflow: auto;
+        border: 1px solid #aebccd;
+        border-radius: 8px;
+        background: #fbfdff;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        min-height: 54px;
+        padding: 0 14px;
+        border-bottom: 1px solid #e4eaf2;
+      }
+
+      .row:last-child {
+        border-bottom: 0;
+      }
+
+      .row span {
+        color: #526070;
+      }
+
+      #bottom-target {
+        margin-top: 24px;
+        padding: 18px;
+        border: 1px solid #b6c6d8;
+        border-radius: 8px;
+        background: #eef8f2;
+      }
+
+      @media (max-width: 760px) {
+        .header,
+        .grid {
+          display: block;
+        }
+
+        .status,
+        section {
+          margin-top: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="header">
+        <div>
+          <h1>Browser Agent Test Page</h1>
+          <p>Use this page to exercise browser actions against stable controls.</p>
+        </div>
+
+        <div class="status" aria-live="polite">
+          <strong>Status</strong>
+          <span id="status">Ready</span>
+        </div>
+      </div>
+
+      <div class="grid">
+        <section>
+          <h2>Buttons</h2>
+          <p>Buttons update the status area so clicks are easy to verify.</p>
+          <div class="controls">
+            <button id="alpha-button" type="button">Alpha</button>
+            <button id="bravo-button" type="button">Bravo</button>
+            <button id="charlie-button" class="primary" type="button">Charlie</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Inputs</h2>
+          <form id="test-form">
+            <label for="name-input">Name</label>
+            <input id="name-input" name="name" autocomplete="off" placeholder="Type a name">
+
+            <label for="note-input">Note</label>
+            <textarea id="note-input" name="note" placeholder="Type a short note"></textarea>
+
+            <label for="choice-input">Choice</label>
+            <select id="choice-input" name="choice">
+              <option value="red">Red</option>
+              <option value="green">Green</option>
+              <option value="blue">Blue</option>
+            </select>
+
+            <div class="controls">
+              <button class="primary" type="submit">Submit Form</button>
+              <button id="clear-form" type="button">Clear</button>
+            </div>
+          </form>
+          <div id="form-output" class="output">No form submission yet.</div>
+        </section>
+
+        <section class="full">
+          <h2>Links</h2>
+          <p>Links cover in-page navigation and a simple external destination.</p>
+          <div class="link-list">
+            <a href="#scroll-section">Jump to scroll area</a>
+            <a href="#bottom-target">Jump to bottom target</a>
+            <a href="https://example.com/">Open example.com</a>
+          </div>
+        </section>
+
+        <section id="scroll-section" class="full">
+          <h2>Scrollable Content</h2>
+          <p>The box below has enough content to require wheel scrolling.</p>
+          <div class="scroll-box" tabindex="0" aria-label="Scrollable test content">
+            <div class="row"><strong>Row 01</strong><span>Top of the scroll area</span></div>
+            <div class="row"><strong>Row 02</strong><span>Intermediate item</span></div>
+            <div class="row"><strong>Row 03</strong><span>Intermediate item</span></div>
+            <div class="row"><strong>Row 04</strong><span>Intermediate item</span></div>
+            <div class="row"><strong>Row 05</strong><span>Intermediate item</span></div>
+            <div class="row"><strong>Row 06</strong><span>Intermediate item</span></div>
+            <div class="row"><strong>Row 07</strong><span>Intermediate item</span></div>
+            <div class="row"><strong>Row 08</strong><span>Intermediate item</span></div>
+            <div class="row"><strong>Row 09</strong><span>Intermediate item</span></div>
+            <div class="row"><strong>Row 10</strong><span>Intermediate item</span></div>
+            <div class="row"><strong>Row 11</strong><span>Intermediate item</span></div>
+            <div class="row"><strong>Row 12</strong><span>Bottom of the scroll area</span></div>
+          </div>
+        </section>
+
+        <section id="bottom-target" class="full">
+          <h2>Bottom Target</h2>
+          <p>This target confirms that in-page links and page-level scrolling work.</p>
+          <div class="controls">
+            <button id="finish-button" class="primary" type="button">Finish Test</button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script>
+      const statusElement = document.querySelector("#status");
+      const form = document.querySelector("#test-form");
+      const formOutput = document.querySelector("#form-output");
+      const nameInput = document.querySelector("#name-input");
+      const noteInput = document.querySelector("#note-input");
+      const choiceInput = document.querySelector("#choice-input");
+
+      function setStatus(message) {
+        statusElement.textContent = message;
+      }
+
+      document.querySelector("#alpha-button").addEventListener("click", () => {
+        setStatus("Alpha clicked");
+      });
+
+      document.querySelector("#bravo-button").addEventListener("click", () => {
+        setStatus("Bravo clicked");
+      });
+
+      document.querySelector("#charlie-button").addEventListener("click", () => {
+        setStatus("Charlie clicked");
+      });
+
+      document.querySelector("#finish-button").addEventListener("click", () => {
+        setStatus("Finished");
+      });
+
+      document.querySelector("#clear-form").addEventListener("click", () => {
+        form.reset();
+        formOutput.textContent = "No form submission yet.";
+        setStatus("Form cleared");
+      });
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const name = nameInput.value || "(empty)";
+        const note = noteInput.value || "(empty)";
+        const choice = choiceInput.value;
+        formOutput.textContent = `Submitted name: ${name}; note: ${note}; choice: ${choice}`;
+        setStatus("Form submitted");
+      });
+    </script>
+  </body>
+</html>
