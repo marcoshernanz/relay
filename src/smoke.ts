@@ -24,12 +24,14 @@ const smokeActions: SmokeAction[] = [
     type: "click",
     x: 199,
     y: 227,
+    button: "left",
   },
   {
     name: "focus name input",
     type: "click",
     x: 893,
     y: 223,
+    button: "left",
   },
   {
     name: "type into name input",
@@ -41,17 +43,19 @@ const smokeActions: SmokeAction[] = [
     type: "click",
     x: 893,
     y: 322,
+    button: "left",
   },
   {
     name: "type into note textarea",
     type: "typeText",
-    text: "Testing hardcoded browser actions.",
+    text: "Testing browser actions.",
   },
   {
     name: "focus select",
     type: "click",
     x: 893,
     y: 425,
+    button: "left",
   },
   {
     name: "exercise select with keyboard",
@@ -68,12 +72,14 @@ const smokeActions: SmokeAction[] = [
     type: "click",
     x: 730,
     y: 482,
+    button: "left",
   },
   {
     name: "jump to scroll area",
     type: "click",
     x: 232,
     y: 685,
+    button: "left",
   },
   {
     name: "scroll inside scroll box",
@@ -88,12 +94,14 @@ const smokeActions: SmokeAction[] = [
     type: "click",
     x: 394,
     y: 239,
+    button: "left",
   },
   {
     name: "click finish button",
     type: "click",
     x: 217,
     y: 713,
+    button: "left",
   },
   {
     name: "return to top",

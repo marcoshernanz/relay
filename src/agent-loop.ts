@@ -2,11 +2,13 @@ import {
   executeBrowserAction,
   type BrowserAction,
 } from "./browser-action.js";
+import { chooseNextAction } from "./ai-action-chooser.js";
+import { agentConfig } from "./config.js";
 import {
   captureBrowserObservation,
   type BrowserActionResult,
   type BrowserObservation,
-  type BrowserObservationInput,
+  type BrowserObservationContext,
 } from "./browser-observation.js";
 import { BrowserSession } from "./browser-session.js";
 
@@ -15,45 +17,32 @@ type AgentLoopOptions = {
   maxSteps: number;
 };
 
-type ActionChooser = (
-  observation: BrowserObservation,
-) => BrowserAction | null | Promise<BrowserAction | null>;
-
-const hardcodedActions: BrowserAction[] = [
-  { type: "wait", ms: 1000 },
-  { type: "click", x: 199, y: 227 },
-  { type: "click", x: 893, y: 223 },
-  { type: "typeText", text: "Ada Lovelace" },
-  { type: "click", x: 893, y: 322 },
-  { type: "typeText", text: "Testing the agent loop skeleton." },
-  { type: "click", x: 730, y: 482 },
-  { type: "click", x: 232, y: 685 },
-  { type: "scroll", x: 640, y: 410, deltaX: 0, deltaY: 420 },
-  { type: "click", x: 394, y: 239 },
-  { type: "click", x: 217, y: 713 },
-  { type: "pressKey", key: "Home" },
-];
+type CompletedBrowserAction = {
+  action: BrowserAction;
+  result: BrowserActionResult;
+};
 
 export async function runAgentLoop({
   task,
   maxSteps,
 }: AgentLoopOptions): Promise<void> {
   const session = new BrowserSession();
-  const chooseNextAction = createHardcodedActionChooser(hardcodedActions);
-  let lastAction: BrowserAction | undefined;
-  let lastActionResult: BrowserActionResult | undefined;
+  let previousAction: CompletedBrowserAction | undefined;
 
   try {
     await session.start();
 
-    for (let step = 0; step < maxSteps; step++) {
-      const observation = await captureBrowserObservation(session, createObservationInput({
+    for (let step = 0; step < maxSteps; step += 1) {
+      const observationContext = createObservationContext({
         task,
         step,
         maxSteps,
-        lastAction,
-        lastActionResult,
-      }));
+        previousAction,
+      });
+      const observation = await captureBrowserObservation(
+        session,
+        observationContext,
+      );
 
       logObservation(observation);
 
@@ -64,19 +53,7 @@ export async function runAgentLoop({
         return;
       }
 
-      console.log(`Executing action: ${JSON.stringify(action)}`);
-
-      try {
-        await executeBrowserAction(session, action);
-        lastAction = action;
-        lastActionResult = { ok: true };
-      } catch (error) {
-        lastAction = action;
-        lastActionResult = {
-          ok: false,
-          message: error instanceof Error ? error.message : String(error),
-        };
-      }
+      previousAction = await executeChosenAction(session, action);
     }
 
     console.log(`Agent loop stopped: reached maxSteps (${maxSteps}).`);
@@ -85,46 +62,113 @@ export async function runAgentLoop({
   }
 }
 
-function createHardcodedActionChooser(actions: BrowserAction[]): ActionChooser {
-  return (observation) => actions[observation.step] ?? null;
-}
-
-function createObservationInput({
+function createObservationContext({
   task,
   step,
   maxSteps,
-  lastAction,
-  lastActionResult,
+  previousAction,
 }: {
   task: string;
   step: number;
   maxSteps: number;
-  lastAction: BrowserAction | undefined;
-  lastActionResult: BrowserActionResult | undefined;
-}): BrowserObservationInput {
-  return {
+  previousAction: CompletedBrowserAction | undefined;
+}): BrowserObservationContext {
+  const context: BrowserObservationContext = {
     task,
     step,
     maxSteps,
-    ...(lastAction === undefined ? {} : { lastAction }),
-    ...(lastActionResult === undefined ? {} : { lastActionResult }),
   };
+
+  if (previousAction === undefined) {
+    return context;
+  }
+
+  return {
+    ...context,
+    lastAction: previousAction.action,
+    lastActionResult: previousAction.result,
+  };
+}
+
+async function executeChosenAction(
+  session: BrowserSession,
+  action: BrowserAction,
+): Promise<CompletedBrowserAction> {
+  logAction(action);
+
+  const result = await executeAction(session, action);
+  logActionResult(result);
+
+  return { action, result };
+}
+
+async function executeAction(
+  session: BrowserSession,
+  action: BrowserAction,
+): Promise<BrowserActionResult> {
+  try {
+    await executeBrowserAction(session, action);
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      message: getErrorMessage(error),
+    };
+  }
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function logObservation(observation: BrowserObservation): void {
   console.log(
     [
-      `Step ${observation.step + 1}/${observation.maxSteps}`,
-      observation.page.title,
-      observation.page.url,
-      `${observation.screenshot.width}x${observation.screenshot.height}`,
+      `Observation ${observation.step + 1}/${observation.maxSteps}`,
+      `title=${JSON.stringify(observation.page.title)}`,
+      `url=${observation.page.url}`,
+      `screenshot=${observation.screenshot.width}x${observation.screenshot.height}`,
     ].join(" | "),
   );
 }
 
-const task = process.argv.slice(2).join(" ") || "Run hardcoded browser actions.";
+function logAction(action: BrowserAction): void {
+  console.log(`Action: ${formatAction(action)}`);
+}
 
-await runAgentLoop({
-  task,
-  maxSteps: 20,
-});
+function logActionResult(result: BrowserActionResult): void {
+  if (result.ok) {
+    console.log("Action result: ok");
+    return;
+  }
+
+  console.log(`Action result: error | ${result.message}`);
+}
+
+function formatAction(action: BrowserAction): string {
+  switch (action.type) {
+    case "click":
+      return [
+        "click",
+        `x=${action.x}`,
+        `y=${action.y}`,
+        `button=${action.button}`,
+      ].join(" ");
+    case "typeText":
+      return `typeText text=${JSON.stringify(action.text)}`;
+    case "pressKey":
+      return `pressKey key=${JSON.stringify(action.key)}`;
+    case "scroll":
+      return [
+        "scroll",
+        `x=${action.x}`,
+        `y=${action.y}`,
+        `deltaX=${action.deltaX}`,
+        `deltaY=${action.deltaY}`,
+      ].join(" ");
+    case "wait":
+      return `wait ms=${action.ms}`;
+  }
+}
+
+await runAgentLoop(agentConfig);

@@ -1,18 +1,18 @@
 # Browser Agent Decisions
 
-This document captures the initial decisions for a simple model-agnostic browser-control agent built with AI SDK, AI Gateway, and Playwright.
+This document captures the initial decisions for a simple model-agnostic browser-control agent built with AI SDK, OpenRouter, and Playwright.
 
 ## Goal
 
 Build an agent loop that controls a browser at the UI level:
 
 1. Capture a screenshot of the current browser state.
-2. Send the screenshot plus task context to a model through AI SDK and AI Gateway.
+2. Send the screenshot plus task context to a model through AI SDK and OpenRouter.
 3. Ask the model to either choose one browser action or answer normally when it is finished.
 4. Execute that action through Playwright.
 5. Capture the next screenshot and repeat until the task is complete or stopped.
 
-The system should not depend on provider-native computer-use models. The agent owns the computer-control protocol and can switch models through AI Gateway.
+The system should not depend on provider-native computer-use models. The agent owns the computer-control protocol and can switch models by changing the typed provider config.
 
 ## Initial Scope
 
@@ -31,7 +31,7 @@ This avoids the complexity of arbitrary desktop control while preserving the cor
 
 ## Model Layer
 
-Use AI SDK and AI Gateway as the model abstraction layer.
+Use AI SDK with OpenRouter.
 
 Requirements for any model used by the agent:
 
@@ -51,7 +51,7 @@ Initial action set:
 
 ```ts
 type BrowserAction =
-  | { type: "click"; x: number; y: number; button?: "left" | "right" }
+  | { type: "click"; x: number; y: number; button: "left" | "right" | "middle" }
   | { type: "typeText"; text: string }
   | { type: "pressKey"; key: string }
   | { type: "scroll"; x: number; y: number; deltaX: number; deltaY: number }
@@ -199,7 +199,8 @@ The milestone is:
 
 - Runtime: Node.js script
 - Model layer: AI SDK Core
-- Model routing: AI Gateway
+- Model provider: OpenRouter through `@openrouter/ai-sdk-provider`
+- Default model: `x-ai/grok-4.3`
 - Browser automation: Playwright Chromium
 - Viewport: `1280x800`
 - Device scale factor: `1`
@@ -211,4 +212,4 @@ The milestone is:
 
 ## Next Step
 
-Scaffold a simple Node.js script with Playwright, AI SDK, AI Gateway, and the normalized `BrowserAction` interface.
+Scaffold a simple Node.js script with Playwright, AI SDK, OpenRouter, and the normalized `BrowserAction` interface.
