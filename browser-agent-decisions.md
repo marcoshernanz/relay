@@ -99,9 +99,7 @@ Do not mix retina-scaled screenshots with CSS-pixel browser coordinates.
 
 ## Prompt Input
 
-Each loop iteration sends a simple prompt plus the latest screenshot.
-
-The input does not need a formal `BrowserObservation` abstraction yet. That was only a possible TypeScript shape for the data sent to the model. For the first version, keep it plain:
+Each loop iteration sends a simple prompt, the latest screenshot, and a compact page observation. The screenshot remains the coordinate source. The page observation gives the model more reliable state and control grounding without adding DOM mutation tools.
 
 - User task
 - Current step number
@@ -110,15 +108,16 @@ The input does not need a formal `BrowserObservation` abstraction yet. That was 
 - Viewport size
 - Last action result, if any
 - Screenshot
+- Playwright ARIA snapshot optimized for AI consumption
+- Visible page text
+- Focused element summary
+- Visible interactive elements with labels, values, bounds, and center coordinates
 
 Possible later additions:
 
-- Browser accessibility snapshot
-- Visible text from OCR
-- Clickable region detection
-- DOM snapshot for the current page
-- Focused element information
+- OCR text for canvas/image-heavy pages
 - Cursor position
+- Ref-based click actions if screenshot coordinate selection is not reliable enough
 
 ## Loop Semantics
 
