@@ -130,6 +130,7 @@ async function main(): Promise<void> {
 
   try {
     await session.start();
+    await assertPageObservationWorks(session);
     await saveScreenshotAfterAction(session, -1);
 
     for (const [index, action] of smokeActions.entries()) {
@@ -154,3 +155,24 @@ async function saveScreenshotAfterAction(
 }
 
 await main();
+
+async function assertPageObservationWorks(session: BrowserSession): Promise<void> {
+  const observation = await session.pageObservation();
+
+  if (!observation.visibleText.includes("Browser Agent Test Page")) {
+    throw new Error("Page observation did not include visible page text.");
+  }
+
+  if (observation.interactiveElements.length === 0) {
+    throw new Error("Page observation did not include interactive elements.");
+  }
+
+  console.log(
+    [
+      "Observed page",
+      `elements=${observation.interactiveElements.length}`,
+      `textChars=${observation.visibleText.length}`,
+      `ariaChars=${observation.ariaSnapshot.length}`,
+    ].join(" | "),
+  );
+}
