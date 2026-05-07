@@ -4,7 +4,8 @@ import { generateText, stepCountIs } from "ai";
 import type { BrowserAction } from "./browser-action.js";
 import type { BrowserObservation } from "./browser-observation.js";
 import { browserTools } from "./browser-tools.js";
-import { agentConfig } from "./config.js";
+import { agentConfig, nvidiaProviderConfig } from "./config.js";
+import { env } from "./env.js";
 import { aiActionChooserSystemPrompt } from "./prompts.js";
 
 export async function chooseNextAction(
@@ -65,22 +66,9 @@ export async function chooseNextAction(
 
 function createNvidiaProvider() {
   return createOpenAICompatible({
-    name: "nvidia",
-    baseURL: agentConfig.nvidiaBaseUrl,
-    apiKey: getNvidiaApiKey(),
+    ...nvidiaProviderConfig,
+    apiKey: env.NVIDIA_API_KEY,
   });
-}
-
-function getNvidiaApiKey(): string {
-  const apiKey = process.env.NVIDIA_API_KEY;
-
-  if (apiKey === undefined || apiKey.trim() === "") {
-    throw new Error(
-      "AI mode requires NVIDIA_API_KEY to be set in the environment.",
-    );
-  }
-
-  return apiKey;
 }
 
 function formatObservationForModel(observation: BrowserObservation): string {
