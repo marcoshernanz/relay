@@ -113,7 +113,16 @@ const smokeActions: SmokeAction[] = [
 const screenshotAfterActionIndexes = new Map<number, string>([
   [-1, "01-initial.jpg"],
   [9, "02-form-submitted.jpg"],
-  [14, "03-finished.jpg"],
+  [13, "03-finished.jpg"],
+]);
+
+const observationCheckAfterActionIndexes = new Map<
+  number,
+  (session: BrowserSession) => Promise<void>
+>([
+  [-1, assertInitialPageObservation],
+  [9, assertFormSubmittedObservation],
+  [13, assertFinishedObservation],
 ]);
 
 async function saveScreenshot(session: BrowserSession, filename: string): Promise<void> {
@@ -131,11 +140,13 @@ async function main(): Promise<void> {
   try {
     await session.start();
     await saveScreenshotAfterAction(session, -1);
+    await assertObservationAfterAction(session, -1);
 
     for (const [index, action] of smokeActions.entries()) {
       console.log(`Running: ${action.name}`);
       await executeBrowserAction(session, action);
       await saveScreenshotAfterAction(session, index);
+      await assertObservationAfterAction(session, index);
     }
   } finally {
     await session.close();
@@ -154,3 +165,114 @@ async function saveScreenshotAfterAction(
 }
 
 await main();
+
+async function assertObservationAfterAction(
+  session: BrowserSession,
+  actionIndex: number,
+): Promise<void> {
+  const check = observationCheckAfterActionIndexes.get(actionIndex);
+
+  if (check !== undefined) {
+    await check(session);
+  }
+}
+
+async function assertInitialPageObservation(
+  session: BrowserSession,
+): Promise<void> {
+  const observation = await session.pageObservation();
+
+  assertDocumentTextIncludes(
+    observation.documentText,
+    "Browser Agent Test Page",
+    "initial page title",
+  );
+  assertInteractiveElement(
+    observation.interactiveElements,
+    "button",
+    "Alpha",
+  );
+  assertInteractiveElement(
+    observation.interactiveElements,
+    "textbox",
+    "Name",
+  );
+
+  console.log(
+    [
+      "Observed page",
+      `elements=${observation.interactiveElements.length}`,
+      `documentTextChars=${observation.documentText.length}`,
+      `ariaChars=${observation.ariaSnapshot.length}`,
+    ].join(" | "),
+  );
+}
+
+async function assertFormSubmittedObservation(
+  session: BrowserSession,
+): Promise<void> {
+  const observation = await session.pageObservation();
+
+  assertDocumentTextIncludes(
+    observation.documentText,
+    "Submitted name: Ada Lovelace",
+    "submitted form output",
+  );
+  assertDocumentTextIncludes(
+    observation.documentText,
+    "Testing browser actions.",
+    "submitted note output",
+  );
+}
+
+async function assertFinishedObservation(session: BrowserSession): Promise<void> {
+  const observation = await session.pageObservation();
+
+  assertDocumentTextIncludes(
+    observation.documentText,
+    "Finished",
+    "final status",
+  );
+}
+
+function assertDocumentTextIncludes(
+  documentText: string,
+  expectedText: string,
+  description: string,
+): void {
+  if (documentText.includes(expectedText)) {
+    return;
+  }
+
+  throw new Error(
+    `Page observation missing ${description}: expected document text to include ${JSON.stringify(expectedText)}.`,
+  );
+}
+
+function assertInteractiveElement(
+  elements: Awaited<
+    ReturnType<BrowserSession["pageObservation"]>
+  >["interactiveElements"],
+  expectedRole: string,
+  expectedLabel: string,
+): void {
+  const matchingElement = elements.find(
+    (element) =>
+      element.role === expectedRole &&
+      (element.label.includes(expectedLabel) ||
+        element.text.includes(expectedLabel)),
+  );
+
+  if (matchingElement !== undefined) {
+    return;
+  }
+
+  throw new Error(
+    `Page observation missing ${expectedRole} ${JSON.stringify(expectedLabel)}. Observed elements: ${elements
+      .map(
+        (element) =>
+          `${element.role} label=${JSON.stringify(element.label)} text=${JSON.stringify(element.text)}`,
+      )
+      .join(", ")}`,
+  );
+}
