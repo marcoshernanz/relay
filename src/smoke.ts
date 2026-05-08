@@ -113,7 +113,7 @@ const smokeActions: SmokeAction[] = [
 const screenshotAfterActionIndexes = new Map<number, string>([
   [-1, "01-initial.jpg"],
   [9, "02-form-submitted.jpg"],
-  [14, "03-finished.jpg"],
+  [13, "03-finished.jpg"],
 ]);
 
 const observationCheckAfterActionIndexes = new Map<
@@ -122,7 +122,7 @@ const observationCheckAfterActionIndexes = new Map<
 >([
   [-1, assertInitialPageObservation],
   [9, assertFormSubmittedObservation],
-  [14, assertFinishedObservation],
+  [13, assertFinishedObservation],
 ]);
 
 async function saveScreenshot(session: BrowserSession, filename: string): Promise<void> {
