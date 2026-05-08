@@ -8,6 +8,9 @@ import { agentConfig } from "./config.js";
 import { env } from "./env.js";
 import { aiActionChooserSystemPrompt } from "./prompts.js";
 
+type InteractiveElement =
+  BrowserObservation["pageObservation"]["interactiveElements"][number];
+
 export async function chooseNextAction(
   observation: BrowserObservation,
 ): Promise<BrowserAction | null> {
@@ -74,63 +77,94 @@ function createOpenRouterProvider() {
 }
 
 function formatObservationForModel(observation: BrowserObservation): string {
-  return [
+  const lines = [
     `Task: ${observation.task}`,
     `Step: ${observation.step + 1}/${observation.maxSteps}`,
-    `Page title: ${observation.page.title}`,
-    `Page URL: ${observation.page.url}`,
-    `Screenshot size: ${observation.screenshot.width}x${observation.screenshot.height}`,
-    `Last action: ${formatJson(observation.lastAction ?? null)}`,
-    `Last action result: ${formatJson(observation.lastActionResult ?? null)}`,
-    "",
-    "Page observation:",
-    formatPageObservation(observation),
-  ].join("\n");
+    `Page: ${formatJson({
+      title: observation.page.title,
+      url: observation.page.url,
+    })}`,
+    `Screenshot: ${observation.screenshot.width}x${observation.screenshot.height}`,
+    `Last action: ${formatOptionalJson(observation.lastAction)}`,
+    `Last result: ${formatOptionalJson(observation.lastActionResult)}`,
+  ];
+
+  appendSection(lines, "Page observation", formatPageObservation(observation));
+
+  return lines.join("\n");
 }
 
 function formatJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function formatPageObservation(observation: BrowserObservation): string {
-  const pageObservation = observation.pageObservation;
-
-  return [
-    `Focused element: ${pageObservation.focusedElement ?? "none"}`,
-    "",
-    "Visible text:",
-    pageObservation.visibleText,
-    "",
-    "Interactive elements visible in the viewport:",
-    ...pageObservation.interactiveElements.map(formatInteractiveElement),
-    "",
-    "ARIA snapshot:",
-    pageObservation.ariaSnapshot,
-  ].join("\n");
+function formatOptionalJson(value: unknown): string {
+  return value === undefined ? "none" : formatJson(value);
 }
 
-function formatInteractiveElement(
-  element: BrowserObservation["pageObservation"]["interactiveElements"][number],
-): string {
-  const value =
-    element.value === null || element.value === ""
-      ? ""
-      : ` value=${JSON.stringify(element.value)}`;
-  const checked =
-    element.checked === null ? "" : ` checked=${String(element.checked)}`;
-  const disabled = element.disabled ? " disabled=true" : "";
-  const text =
-    element.text === "" ? "" : ` text=${JSON.stringify(element.text)}`;
+function formatPageObservation(observation: BrowserObservation): string {
+  const pageObservation = observation.pageObservation;
+  const lines = [
+    `Focused: ${pageObservation.focusedElement ?? "none"}`,
+    `Document text: ${formatBlock(pageObservation.documentText)}`,
+  ];
 
+  appendSection(
+    lines,
+    "Interactive elements",
+    pageObservation.interactiveElements.length === 0
+      ? "none"
+      : pageObservation.interactiveElements.map(formatInteractiveElement),
+  );
+  appendSection(lines, "ARIA snapshot", formatBlock(pageObservation.ariaSnapshot));
+
+  return lines.join("\n");
+}
+
+function appendSection(
+  lines: string[],
+  label: string,
+  content: string | string[],
+): void {
+  const sectionLines = Array.isArray(content) ? content : content.split("\n");
+
+  lines.push("", `${label}:`, ...sectionLines);
+}
+
+function formatBlock(value: string): string {
+  return value === "" ? "none" : `\n${value}`;
+}
+
+function formatInteractiveElement(element: InteractiveElement): string {
   return [
     `[${element.index}]`,
-    `${element.role}`,
-    JSON.stringify(element.label || "(unlabeled)"),
+    element.role,
+    formatJson(element.label || "(unlabeled)"),
     `tag=${element.tagName}`,
-    `center=(${element.center.x},${element.center.y})`,
-    `bounds=${element.bounds.x},${element.bounds.y},${element.bounds.width}x${element.bounds.height}`,
-    `${value}${checked}${disabled}${text}`,
-  ]
-    .join(" ")
-    .trim();
+    `center=${element.center.x},${element.center.y}`,
+    `box=${element.bounds.x},${element.bounds.y},${element.bounds.width}x${element.bounds.height}`,
+    ...formatElementAttributes(element),
+  ].join(" ");
+}
+
+function formatElementAttributes(element: InteractiveElement): string[] {
+  const attributes: string[] = [];
+
+  if (element.value !== null && element.value !== "") {
+    attributes.push(`value=${formatJson(element.value)}`);
+  }
+
+  if (element.checked !== null) {
+    attributes.push(`checked=${String(element.checked)}`);
+  }
+
+  if (element.disabled) {
+    attributes.push("disabled=true");
+  }
+
+  if (element.text !== "") {
+    attributes.push(`text=${formatJson(element.text)}`);
+  }
+
+  return attributes;
 }
