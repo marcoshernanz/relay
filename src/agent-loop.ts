@@ -129,7 +129,7 @@ function logObservation(observation: BrowserObservation): void {
       `url=${observation.page.url}`,
       `screenshot=${observation.screenshot.width}x${observation.screenshot.height}`,
       `elements=${observation.pageObservation.interactiveElements.length}`,
-      `textChars=${observation.pageObservation.visibleText.length}`,
+      `documentTextChars=${observation.pageObservation.documentText.length}`,
     ].join(" | "),
   );
 }
