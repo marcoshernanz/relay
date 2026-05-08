@@ -1,53 +1,57 @@
 # Browser Agent Decisions
 
-This document captures the initial decisions for a simple model-agnostic browser-control agent built with AI SDK, OpenRouter, and Playwright.
+This document records the current browser-agent architecture and the decisions that keep it model-agnostic.
 
-## Goal
+## Current Architecture
 
-Build an agent loop that controls a browser at the UI level:
+The agent controls one Playwright Chromium page through a normalized action protocol. Each loop iteration:
 
-1. Capture a screenshot of the current browser state.
-2. Send the screenshot plus task context to a model through AI SDK and OpenRouter.
-3. Ask the model to either choose one browser action or answer normally when it is finished.
-4. Execute that action through Playwright.
-5. Capture the next screenshot and repeat until the task is complete or stopped.
+1. Captures a viewport screenshot.
+2. Captures a compact page observation from Playwright.
+3. Sends the task, browser metadata, last action result, page observation, and screenshot to Grok through AI SDK and OpenRouter.
+4. Lets the model choose zero or one browser tool call.
+5. Converts that tool call into an internal `BrowserAction`.
+6. Executes the action through Playwright, waits briefly, and repeats.
 
-The system should not depend on provider-native computer-use models. The agent owns the computer-control protocol and can switch models by changing the typed provider config.
+The model never receives direct Playwright, DOM mutation, cookie, credential, file, or network-request tools. It can only ask for one of the browser actions defined by the local action schema.
 
-## Initial Scope
-
-Start with one controlled browser window.
-
-Default decisions:
+## Runtime Defaults
 
 - Browser runtime: Playwright Chromium
 - Viewport: `1280x800`
 - Device scale factor: `1`
-- Browser mode: one isolated browser context per task
-- Auth state: nothing signed in
-- Tabs: one active page initially
+- Browser mode: one isolated context per run
+- Start page: `test-pages/basic.html`
+- Auth state: unsigned fresh context
+- Default action delay: `500ms`
 
-This avoids the complexity of arbitrary desktop control while preserving the core screenshot-to-action loop.
+These defaults keep screenshots and browser coordinates aligned: screenshot pixels are CSS pixels, and click/scroll coordinates are rejected if they fall outside the viewport.
 
 ## Model Layer
 
-Use AI SDK with OpenRouter.
+- Model provider: OpenRouter through `@openrouter/ai-sdk-provider`
+- Model id: `x-ai/grok-4.3`
+- AI SDK API: `generateText`
+- Tool policy: `toolChoice: "auto"` with `stepCountIs(1)`
+- Temperature: `0`
 
-Requirements for any model used by the agent:
+The provider and model are configured in `src/config.ts`; the OpenRouter API key is read from `OPENROUTER_API_KEY`. Keeping the provider behind AI SDK makes the control loop independent from provider-native computer-use APIs.
 
-- Supports image input
-- Supports tool calling or reliable structured JSON output
-- Can reason over browser screenshots
-- Can follow screen coordinates accurately
-- Can follow strict action constraints
+## Page Observation
 
-Different models will vary significantly in visual grounding, tool-call reliability, latency, and cost. The first version should keep the loop simple enough that models can be swapped and compared easily.
+The screenshot remains the spatial source of truth. The page observation supplies grounding that screenshots alone handle poorly:
 
-## Agent Contract
+- Current URL and title
+- ARIA snapshot from `page.ariaSnapshot({ mode: "ai" })`
+- Document text from `document.body.innerText`, which can include offscreen content
+- Focused element summary
+- Visible interactive elements with role, label, value, disabled/checked state, bounds, and center coordinate
 
-The model does not directly control Playwright. It chooses from a normalized internal action schema.
+Interactive elements are viewport-filtered and capped to keep prompts bounded. The prompt tells the model to use document text and ARIA for state, visible interactive elements for current controls, and the screenshot to verify exact coordinates.
 
-Initial action set:
+## Action Contract
+
+Browser actions are normalized before execution:
 
 ```ts
 type BrowserAction =
@@ -58,157 +62,38 @@ type BrowserAction =
   | { type: "wait"; ms: number };
 ```
 
-The executor should only understand this internal action format, regardless of whether the model produced it through AI SDK tool calling or a structured JSON fallback.
-
-## Tool Set
-
-Initial model tools:
-
-- `click({ x, y, button })`
-- `typeText({ text })`
-- `pressKey({ key })`
-- `scroll({ x, y, deltaX, deltaY })`
-- `wait({ ms })`
-
-Avoid these in the MVP:
-
-- JavaScript execution
-- DOM mutation
-- Cookie access
-- Credential access
-- File upload
-- Download automation
-- Direct network requests made on behalf of the agent
-
-Those tools are powerful and should only be added after the visual control loop, logs, and approval gates are working.
-
-## Coordinate System
-
-Use one consistent coordinate system.
-
-Default decisions:
-
-- Screenshots are captured at the same size as the Playwright viewport.
-- Coordinates are CSS pixels.
-- `deviceScaleFactor` is `1`.
-- The screenshot width and height are included in every model prompt.
-- Clicks outside the viewport are rejected before execution.
-- Every coordinate action is logged.
-
-Do not mix retina-scaled screenshots with CSS-pixel browser coordinates.
-
-## Prompt Input
-
-Each loop iteration sends a simple prompt, the latest screenshot, and a compact page observation. The screenshot remains the coordinate source. The page observation gives the model more reliable state and control grounding without adding DOM mutation tools.
-
-- User task
-- Current step number
-- Current URL
-- Page title
-- Viewport size
-- Last action result, if any
-- Screenshot
-- Playwright ARIA snapshot optimized for AI consumption
-- Visible page text
-- Focused element summary
-- Visible interactive elements with labels, values, bounds, and center coordinates
-
-Possible later additions:
-
-- OCR text for canvas/image-heavy pages
-- Cursor position
-- Ref-based click actions if screenshot coordinate selection is not reliable enough
+AI SDK tools return this internal schema, and `executeBrowserAction` is the only place that maps it to `BrowserSession` methods. This keeps model-tool names separate from the browser execution boundary.
 
 ## Loop Semantics
 
-The model can either choose one action or stop by responding with normal text.
-
-Default decisions:
-
 - One model call produces at most one action.
-- If the model calls a tool, the executor runs the action.
-- The browser is allowed to settle briefly.
-- A new screenshot is captured.
-- The loop repeats.
-- If the model does not call a tool, treat the model's text response as the final answer and stop.
+- A missing tool call means the agent is done and has answered normally.
+- Tool-call failures are returned as the next observation's last action result.
+- The loop stops after `maxSteps`.
 
-Initial limits:
+The step cap is an operational guard against runaway loops. It is not a safety policy.
 
-- Max steps per task: `50`
-- Default wait after actions: `300-800ms`
-- Max wait action: `5000ms`
+## Safety Boundaries
 
-The max step limit is an operational guard to avoid infinite loops, not a safety system.
+The prototype relies on isolation and a narrow tool set:
 
-## Safety
+- Fresh browser context per run
+- No signed-in profile
+- No saved cookies or credentials
+- No JavaScript execution tool
+- No DOM mutation tool
+- No download, upload, or direct network-request tool
 
-The first version relies on browser isolation instead of a detailed safety policy.
+Persistent sessions should be explicit, named, and scoped to known allowed domains if they are added later.
 
-Default decisions:
+## Smoke Verification
 
-- Launch a fresh Playwright browser context.
-- Do not use a signed-in browser profile.
-- Do not load saved cookies or credentials.
-- Treat the browser like a guest or incognito session.
+`pnpm smoke` runs a deterministic local-page workflow against `test-pages/basic.html`. It exercises waiting, clicking, typing, keyboard selection, form submission, in-page navigation, scrolling, and final status update.
 
-## Session And Authentication
+Smoke assertions intentionally check only stable milestones:
 
-Start unauthenticated.
+- Initial page observation sees expected document text and key visible controls.
+- Submitted form output includes the typed name and note.
+- Final observation includes the finished status.
 
-Default decisions:
-
-- Each task gets an isolated browser context.
-- No persistent user profile for the first prototype.
-- Persistent named profiles can be added later.
-
-When persistent sessions are introduced, they should be explicit, named, and scoped to a known set of allowed domains.
-
-## Logging
-
-Keep basic logs while developing.
-
-Log for each step:
-
-- Step number
-- Model name
-- Current URL and title
-- Chosen action
-- Tool arguments
-- Executor result
-- Timing
-
-Screenshots can be logged later if needed.
-
-## First Success Criteria
-
-The first version should prove the basic loop.
-
-Initial test tasks:
-
-- Search the web and open a result.
-- Fill a simple form.
-- Navigate a documentation site and find a specific piece of information.
-- Use a local test page with buttons, inputs, dropdowns, and modals.
-
-The milestone is:
-
-> Given a browser screenshot and a user task, the agent can choose valid browser actions until it completes simple web tasks or stops with a final text answer.
-
-## Recommended Starting Stack
-
-- Runtime: Node.js script
-- Model layer: AI SDK Core
-- Model provider: OpenRouter through `@openrouter/ai-sdk-provider`
-- Default model: `x-ai/grok-4.3`
-- Browser automation: Playwright Chromium
-- Viewport: `1280x800`
-- Device scale factor: `1`
-- Agent contract: normalized `BrowserAction`
-- Loop: zero or one action per model call
-- Max steps: `50`
-- Safety: fresh unsigned browser context
-- Auth: nothing signed in
-
-## Next Step
-
-Scaffold a simple Node.js script with Playwright, AI SDK, OpenRouter, and the normalized `BrowserAction` interface.
+Screenshots are saved under `dist/smoke/` at the initial state, after form submission, and after the final state for manual inspection.
