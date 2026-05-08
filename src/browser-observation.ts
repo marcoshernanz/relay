@@ -36,10 +36,8 @@ export async function captureBrowserObservation(
   session: BrowserSession,
   context: BrowserObservationContext,
 ): Promise<BrowserObservation> {
-  const [pageSnapshot, pageObservation] = await Promise.all([
-    session.screenshot(),
-    session.pageObservation(),
-  ]);
+  const pageSnapshot = await session.screenshot();
+  const pageObservation = await session.pageObservation();
 
   return {
     ...context,
